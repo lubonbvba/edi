@@ -75,7 +75,7 @@ class AccountInvoice(models.Model):
         if (
                 self.company_id.embed_pdf_in_ubl_xml_invoice and
                 not self._context.get('no_embedded_pdf')):
-            filename = 'Invoice-' + self.number + '.pdf'
+            filename = 'Inv-' + self.number.replace('/','-') + '.pdf'
             docu_reference = etree.SubElement(
                 parent_node, ns['cac'] + 'AdditionalDocumentReference')
             docu_reference_id = etree.SubElement(
@@ -289,7 +289,8 @@ class AccountInvoice(models.Model):
     @api.multi
     def get_ubl_filename(self, version='2.1'):
         """This method is designed to be inherited"""
-        return 'UBL-Invoice-%s.xml' % version
+#        return 'UBL-Invoice-%s.xml' % version
+	return 'INV-' + self.number.replace('/','-') +'.xml' 
 
     @api.multi
     def get_ubl_version(self):
