@@ -22,6 +22,7 @@
         <field name="move_id" position="after">
             <field name="peppol_ref" />
             <field name="peppol_state" />
+            <field name="peppolC3MessageID" />
             <field name="peppol_state_time" />
             <field name="peppol_error" />
 

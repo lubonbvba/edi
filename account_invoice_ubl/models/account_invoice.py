@@ -17,6 +17,7 @@ class AccountInvoice(models.Model):
     _inherit = ['account.invoice', 'base.ubl']
     peppol_ref=odoofields.Char()
     peppol_state=odoofields.Char()
+    peppolC3MessageID=odoofields.Char()
     peppol_error=odoofields.Text()
     peppol_state_time =odoofields.Datetime()
 
@@ -162,8 +163,8 @@ class AccountInvoice(models.Model):
             line_root, ns['cbc'] + 'LineExtensionAmount',
             currencyID=cur_name)
         line_amount.text = '%0.*f' % (account_precision, iline.price_subtotal)
-        self._ubl_add_invoice_line_tax_total(
-            iline, line_root, ns, version=version)
+#        self._ubl_add_invoice_line_tax_total(
+#            iline, line_root, ns, version=version)
         self._ubl_add_item(
             iline.name, iline.product_id, line_root, ns, type='sale',
             version=version)
@@ -345,14 +346,16 @@ class AccountInvoice(models.Model):
             # would take 'out_invoice' value by default !
             'type': 'binary',
             })
-        action = self.env['ir.actions.act_window'].for_xml_id(
-            'base', 'action_attachment')
-        action.update({
-            'res_id': attach.id,
-            'views': False,
-            'view_mode': 'form,tree'
-            })
-        return action
+        return
+
+        # action = self.env['ir.actions.act_window'].for_xml_id(
+        #     'base', 'action_attachment')
+        # action.update({
+        #     'res_id': attach.id,
+        #     'views': False,
+        #     'view_mode': 'form,tree'
+        #     })
+        # return action
 
     @api.multi
     def send_ubl_xml_file_button(self):

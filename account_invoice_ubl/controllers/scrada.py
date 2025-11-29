@@ -1,4 +1,5 @@
 from email import message
+from openerp import fields
 import openerp.http as http
 from openerp.http import request, SUPERUSER_ID
 import json
@@ -22,6 +23,9 @@ class ScradaBase(http.Controller):
             if invoice:
                 _logger.info ("Invoice found")
                 invoice.sudo().peppol_state = message["status"]
+                invoice.sudo().peppolC3MessageID = message["peppolC3MessageID"]
+                invoice.sudo().peppol_state_time  = fields.datetime.now()
+
                 invoice.sudo().peppol_error = message["errorMessage"]
 
             else:

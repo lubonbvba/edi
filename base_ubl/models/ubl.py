@@ -479,8 +479,9 @@ class BaseUbl(models.AbstractModel):
         tax_scheme = etree.SubElement(parent_node, ns['cac'] + 'TaxScheme')
         if tax_scheme_dict.get('id'):
             tax_scheme_id = etree.SubElement(
-                tax_scheme, ns['cbc'] + 'ID', schemeID='UN/ECE 5153',
-                schemeAgencyID='6')
+#                tax_scheme, ns['cbc'] + 'ID', schemeID='UN/ECE 5153', schemeAgencyID='6')
+                tax_scheme, ns['cbc'] + 'ID')
+
             tax_scheme_id.text = tax_scheme_dict['id']
         if tax_scheme_dict.get('name'):
             tax_scheme_name = etree.SubElement(tax_scheme, ns['cbc'] + 'Name')
