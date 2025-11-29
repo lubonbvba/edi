@@ -2,24 +2,35 @@
 # © 2016 Akretion (Alexis de Lattre <alexis.delattre@akretion.com>)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from openerp import models, api, _
+#from dataclasses import fields
+from openerp import models, fields as odoofields, api, _
 from lxml import etree
 from openerp.tools import float_is_zero, float_round
 from openerp.exceptions import Warning as UserError
 import logging
-
+import json,requests
 logger = logging.getLogger(__name__)
-
+import pdb
 
 class AccountInvoice(models.Model):
     _name = 'account.invoice'
     _inherit = ['account.invoice', 'base.ubl']
+    peppol_ref=odoofields.Char()
+    peppol_state=odoofields.Char()
+    peppol_error=odoofields.Text()
+    peppol_state_time =odoofields.Datetime()
 
     @api.multi
     def _ubl_add_header(self, parent_node, ns, version='2.1'):
         ubl_version = etree.SubElement(
             parent_node, ns['cbc'] + 'UBLVersionID')
         ubl_version.text = version
+        ubl_CustomizationID = etree.SubElement(
+            parent_node, ns['cbc'] + 'CustomizationID')
+        ubl_CustomizationID.text = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
+        ubl_ProfileID = etree.SubElement(
+            parent_node, ns['cbc'] + 'ProfileID')
+        ubl_ProfileID.text = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
         doc_id = etree.SubElement(parent_node, ns['cbc'] + 'ID')
         doc_id.text = self.number
         issue_date = etree.SubElement(parent_node, ns['cbc'] + 'IssueDate')
@@ -33,7 +44,7 @@ class AccountInvoice(models.Model):
             type_code.text = '380'
         elif self.type == 'out_refund':
             type_code.text = '381'
-        if self.comment:
+        if self.comment and self.comment.strip():
             note = etree.SubElement(parent_node, ns['cbc'] + 'Note')
             note.text = self.comment
         doc_currency = etree.SubElement(
@@ -43,12 +54,13 @@ class AccountInvoice(models.Model):
     @api.multi
     def _ubl_add_order_reference(self, parent_node, ns, version='2.1'):
         self.ensure_one()
-        if self.name:
-            order_ref = etree.SubElement(
-                parent_node, ns['cac'] + 'OrderReference')
-            order_ref_id = etree.SubElement(
-                order_ref, ns['cbc'] + 'ID')
-            order_ref_id.text = self.name
+#        if self.name:
+# order ref altijd opgeven, N/A als leeg
+        order_ref = etree.SubElement(
+            parent_node, ns['cac'] + 'OrderReference')
+        order_ref_id = etree.SubElement(
+            order_ref, ns['cbc'] + 'ID')
+        order_ref_id.text = self.name or "N/A"
 
     @api.multi
     def _ubl_get_contract_document_reference_dict(self):
@@ -166,13 +178,13 @@ class AccountInvoice(models.Model):
                 iline.price_subtotal / float(qty),
                 precision_digits=price_precision)
         price_amount.text = '%0.*f' % (price_precision, price_unit)
-        if uom_unece_code:
-            base_qty = etree.SubElement(
-                price_node, ns['cbc'] + 'BaseQuantity',
-                unitCode=uom_unece_code)
-        else:
-            base_qty = etree.SubElement(price_node, ns['cbc'] + 'BaseQuantity')
-        base_qty.text = '%0.*f' % (qty_precision, qty)
+        # if uom_unece_code:
+        #     base_qty = etree.SubElement(
+        #         price_node, ns['cbc'] + 'BaseQuantity',
+        #         unitCode=uom_unece_code)
+        # else:
+        #     base_qty = etree.SubElement(price_node, ns['cbc'] + 'BaseQuantity')
+        # base_qty.text = '%0.*f' % (qty_precision, qty)
 
     def _ubl_add_invoice_line_tax_total(
             self, iline, parent_node, ns, version='2.1'):
@@ -193,7 +205,7 @@ class AccountInvoice(models.Model):
             tax = self.env['account.tax'].browse(res_tax['id'])
             # we don't have the base amount in res_tax :-(
             self._ubl_add_tax_subtotal(
-                False, res_tax['amount'], tax, cur_name, tax_total_node, ns,
+                iline.price_subtotal, res_tax['amount'], tax, cur_name, tax_total_node, ns,
                 version=version)
 
     @api.multi
@@ -245,9 +257,9 @@ class AccountInvoice(models.Model):
         # delivery_partner = self.get_delivery_partner()
         # self._ubl_add_delivery(delivery_partner, xml_root, ns)
         # Put paymentmeans block even when invoice is paid ?
-        self._ubl_add_payment_means(
-            self.partner_bank_id, self.payment_mode_id, self.date_due,
-            xml_root, ns, version=version)
+        # self._ubl_add_payment_means(
+        #     self.partner_bank_id, self.payment_mode_id, self.date_due,
+        #     xml_root, ns, version=version)
         if self.payment_term:
             self._ubl_add_payment_terms(
                 self.payment_term, xml_root, ns, version=version)
@@ -256,9 +268,11 @@ class AccountInvoice(models.Model):
 
         line_number = 0
         for iline in self.invoice_line:
-            line_number += 1
-            self._ubl_add_invoice_line(
-                xml_root, iline, line_number, ns, version=version)
+            if iline.price_subtotal:
+                #lijnen weghalen die 0e kosten
+                line_number += 1
+                self._ubl_add_invoice_line(
+                    xml_root, iline, line_number, ns, version=version)
         return xml_root
 
     @api.multi
@@ -289,8 +303,7 @@ class AccountInvoice(models.Model):
     @api.multi
     def get_ubl_filename(self, version='2.1'):
         """This method is designed to be inherited"""
-#        return 'UBL-Invoice-%s.xml' % version
-	return 'INV-' + self.number.replace('/','-') +'.xml' 
+        return 'INV-' + self.number.replace('/','-') +'.xml' 
 
     @api.multi
     def get_ubl_version(self):
@@ -340,3 +353,34 @@ class AccountInvoice(models.Model):
             'view_mode': 'form,tree'
             })
         return action
+
+    @api.multi
+    def send_ubl_xml_file_button(self):
+        self.ensure_one()
+        version = self.get_ubl_version()
+        xml_string = self.generate_ubl_xml_string(version=version)
+        if isinstance(xml_string, str):        # bytes → decode naar unicode
+            xml_string = xml_string.decode("utf-8")
+
+        body = xml_string.encode("utf-8")         
+        headers={}
+        headers["X-API-KEY"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-API-KEY'))
+        headers["X-PASSWORD"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-PASSWORD'))
+        headers["Content-Type"] = "application/xml"
+        headers["x-scrada-peppol-sender-scheme"] = "iso6523-actorid-upis"
+        headers["x-scrada-peppol-sender-id"] = "0208:" + self._ubl_get_company_id(self.company_id.partner_id.country_id.code,(self.company_id.partner_id.sanitized_vat))
+        headers["x-scrada-peppol-receiver-Scheme"] = "iso6523-actorid-upis"
+        headers["x-scrada-peppol-receiver-id"] = (self.env['ir.config_parameter'].get_param('peppol_overwrite_recipient')) or "0208:" +  self._ubl_get_company_id(self.partner_id.country_id.code,(self.partner_id.sanitized_vat))
+        headers["x-scrada-peppol-c1-country-code"] = self.company_id.partner_id.country_id.code
+        headers["x-scrada-peppol-document-type-scheme"] = "busdox-docid-qns"
+        headers["x-scrada-peppol-document-type-value"] = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1"
+        headers["x-scrada-peppol-process-scheme"] = "cenbii-procid-ubl"
+        headers["x-scrada-peppol-process-value"] = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
+        headers["x-scrada-external-reference"] = self.number
+
+        url= self.env['ir.config_parameter'].get_param('peppol_base_url') + "/v1/company/" + self.env['ir.config_parameter'].get_param('peppol_scrada_company_id') + "/peppol/outbound/document"
+        response = requests.post(url, headers=headers, data=body)
+        self.peppol_ref=response.text.strip().strip('"')
+        # Optional: log response
+#        logger.info("Scrada response status: %s", response.status_code)
+#        logger.info("Scrada response: %s", response.text)

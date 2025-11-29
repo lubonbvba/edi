@@ -12,6 +12,8 @@ import mimetypes
 import logging
 logger = logging.getLogger(__name__)
 
+import re
+
 try:
     import PyPDF2
 except ImportError:
@@ -30,9 +32,9 @@ class BaseUbl(models.AbstractModel):
         country_code = etree.SubElement(
             country_root, ns['cbc'] + 'IdentificationCode')
         country_code.text = country.code
-        country_name = etree.SubElement(
-            country_root, ns['cbc'] + 'Name')
-        country_name.text = country.name
+        # country_name = etree.SubElement(
+        #     country_root, ns['cbc'] + 'Name')
+        # country_name.text = country.name
 
     @api.model
     def _ubl_add_address(
@@ -89,10 +91,10 @@ class BaseUbl(models.AbstractModel):
         if phone:
             telephone = etree.SubElement(contact, ns['cbc'] + 'Telephone')
             telephone.text = phone
-        fax = partner.fax or partner.commercial_partner_id.fax
-        if fax:
-            telefax = etree.SubElement(contact, ns['cbc'] + 'Telefax')
-            telefax.text = fax
+        # fax = partner.fax or partner.commercial_partner_id.fax
+        # if fax:
+        #     telefax = etree.SubElement(contact, ns['cbc'] + 'Telefax')
+        #     telefax.text = fax
         email = partner.email or partner.commercial_partner_id.email
         if email:
             electronicmail = etree.SubElement(
@@ -117,9 +119,26 @@ class BaseUbl(models.AbstractModel):
         Should return a dict with key=SchemeName, value=Identifier'''
         return {}
 
+
+
+    @api.model
+    def _ubl_get_company_id(self,country,vat):
+        pattern=r"^({})(\d+)$".format(re.escape(country))
+        m = re.match(pattern, vat, flags=re.IGNORECASE)
+        return m.group(2)
+
+
     @api.model
     def _ubl_add_party_identification(
             self, commercial_partner, parent_node, ns, version='2.1'):
+        endpointID = etree.SubElement(parent_node, ns['cbc'] + 'EndpointID',  schemeID='0208')
+        country="BE"
+ 
+        pattern=r"^({})(\d+)$".format(re.escape(commercial_partner.country_id.code))
+        m = re.match(pattern, commercial_partner.sanitized_vat, flags=re.IGNORECASE)
+        endpointID.text=m.group(2)
+
+#        endpointID.text=commercial_partner.sanitized_vat    
         id_dict = self._ubl_get_party_identification(commercial_partner)
         if id_dict:
             party_identification = etree.SubElement(
@@ -146,9 +165,9 @@ class BaseUbl(models.AbstractModel):
         if commercial_partner.vat:
             party_tax_scheme = etree.SubElement(
                 parent_node, ns['cac'] + 'PartyTaxScheme')
-            registration_name = etree.SubElement(
-                party_tax_scheme, ns['cbc'] + 'RegistrationName')
-            registration_name.text = commercial_partner.name
+            # registration_name = etree.SubElement(
+            #     party_tax_scheme, ns['cbc'] + 'RegistrationName')
+            # registration_name.text = commercial_partner.name
             company_id = etree.SubElement(
                 party_tax_scheme, ns['cbc'] + 'CompanyID')
             company_id.text = commercial_partner.sanitized_vat
@@ -165,31 +184,31 @@ class BaseUbl(models.AbstractModel):
         registration_name = etree.SubElement(
             party_legal_entity, ns['cbc'] + 'RegistrationName')
         registration_name.text = commercial_partner.name
-        self._ubl_add_address(
-            commercial_partner, 'RegistrationAddress', party_legal_entity,
-            ns, version=version)
+        # self._ubl_add_address(
+        #     commercial_partner, 'RegistrationAddress', party_legal_entity,
+        #     ns, version=version)
 
     @api.model
     def _ubl_add_party(
             self, partner, company, node_name, parent_node, ns, version='2.1'):
         commercial_partner = partner.commercial_partner_id
         party = etree.SubElement(parent_node, ns['cac'] + node_name)
-        if commercial_partner.website:
-            website = etree.SubElement(party, ns['cbc'] + 'WebsiteURI')
-            website.text = commercial_partner.website
+        # if commercial_partner.website:
+        #     website = etree.SubElement(party, ns['cbc'] + 'WebsiteURI')
+        #     website.text = commercial_partner.website
         self._ubl_add_party_identification(
             commercial_partner, party, ns, version=version)
         party_name = etree.SubElement(party, ns['cac'] + 'PartyName')
         name = etree.SubElement(party_name, ns['cbc'] + 'Name')
         name.text = commercial_partner.name
-        if partner.lang:
-            self._ubl_add_language(partner.lang, party, ns, version=version)
+        # if partner.lang:
+        #     self._ubl_add_language(partner.lang, party, ns, version=version)
         self._ubl_add_address(
             commercial_partner, 'PostalAddress', party, ns, version=version)
         self._ubl_add_party_tax_scheme(
             commercial_partner, party, ns, version=version)
-        if company:
-            self._ubl_add_party_legal_entity(
+#        if company:
+        self._ubl_add_party_legal_entity(
                 commercial_partner, party, ns, version='2.1')
         self._ubl_add_contact(partner, party, ns, version=version)
 
@@ -205,10 +224,11 @@ class BaseUbl(models.AbstractModel):
                 partner = company.partner_id
         customer_party_root = etree.SubElement(
             parent_node, ns['cac'] + node_name)
-        if not company and partner.commercial_partner_id.ref:
-            customer_ref = etree.SubElement(
-                customer_party_root, ns['cbc'] + 'SupplierAssignedAccountID')
-            customer_ref.text = partner.commercial_partner_id.ref
+        # if not company and partner.commercial_partner_id.ref:
+        #     # het gaat over een klant / buyer
+        #     customer_ref = etree.SubElement(
+        #         customer_party_root, ns['cbc'] + 'SupplierAssignedAccountID')
+        #     customer_ref.text = partner.commercial_partner_id.ref
         self._ubl_add_party(
             partner, company, 'Party', customer_party_root, ns,
             version=version)
@@ -370,7 +390,7 @@ class BaseUbl(models.AbstractModel):
                     item, ns['cac'] + 'StandardItemIdentification')
                 std_identification_id = etree.SubElement(
                     std_identification, ns['cbc'] + 'ID',
-                    schemeAgencyID='6', schemeID='GTIN')
+                    schemeAgencyID='6', schemeID='0160')
                 std_identification_id.text = product.ean13
             # I'm not 100% sure, but it seems that ClassifiedTaxCategory
             # contains the taxes of the product without taking into
@@ -408,13 +428,13 @@ class BaseUbl(models.AbstractModel):
         tax_amount_node = etree.SubElement(
             tax_subtotal, ns['cbc'] + 'TaxAmount', currencyID=currency_code)
         tax_amount_node.text = '%0.*f' % (prec, tax_amount)
-        if (
-                tax.type == 'percent' and
-                not float_is_zero(tax.amount, precision_digits=prec+3)):
-            percent = etree.SubElement(
-                tax_subtotal, ns['cbc'] + 'Percent')
-            percent.text = unicode(
-                float_round(tax.amount * 100, precision_digits=2))
+        # if (
+        #         tax.type == 'percent' and
+        #         not float_is_zero(tax.amount, precision_digits=prec+3)):
+        #     percent = etree.SubElement(
+        #         tax_subtotal, ns['cbc'] + 'Percent')
+        #     percent.text = unicode(
+        #         float_round(tax.amount * 100, precision_digits=2))
         self._ubl_add_tax_category(tax, tax_subtotal, ns, version=version)
 
     @api.model
@@ -426,12 +446,13 @@ class BaseUbl(models.AbstractModel):
             raise UserError(_(
                 "Missing UNECE Tax Category on tax '%s'" % tax.name))
         tax_category_id = etree.SubElement(
-            tax_category, ns['cbc'] + 'ID', schemeID='UN/ECE 5305',
-            schemeAgencyID='6')
+#            tax_category, ns['cbc'] + 'ID', schemeID='UN/ECE 5305',
+            tax_category, ns['cbc'] + 'ID')
+#            schemeAgencyID='6')
         tax_category_id.text = tax.unece_categ_code
-        tax_name = etree.SubElement(
-            tax_category, ns['cbc'] + 'Name')
-        tax_name.text = tax.name
+        # tax_name = etree.SubElement(
+        #     tax_category, ns['cbc'] + 'Name')
+        # tax_name.text = tax.name
         if tax.type == 'percent':
             tax_percent = etree.SubElement(
                 tax_category, ns['cbc'] + 'Percent')
@@ -496,7 +517,7 @@ class BaseUbl(models.AbstractModel):
         try:
             t = etree.parse(StringIO(xml_string))
             official_schema.assertValid(t)
-        except Exception, e:
+        except Exception as e:
             # if the validation of the XSD fails, we arrive here
             logger = logging.getLogger(__name__)
             logger.warning(
@@ -632,7 +653,7 @@ class BaseUbl(models.AbstractModel):
 
     def ubl_parse_product(self, line_node, ns):
         ean13_xpath = line_node.xpath(
-            "cac:Item/cac:StandardItemIdentification/cbc:ID[@schemeID='GTIN']",
+            "cac:Item/cac:StandardItemIdentification/cbc:ID[@schemeID='0160']",
             namespaces=ns)
         code_xpath = line_node.xpath(
             "cac:Item/cac:SellersItemIdentification/cbc:ID", namespaces=ns)

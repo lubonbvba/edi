@@ -16,7 +16,17 @@
         <button name="invoice_cancel" position="before">
             <button type="object" name="attach_ubl_xml_file_button"
                 string="Generate UBL XML File" states="open,paid"/>
+            <button type="object" name="send_ubl_xml_file_button"
+                string="Send peppol" states="open,paid"/>
         </button>
+        <field name="move_id" position="after">
+            <field name="peppol_ref" />
+            <field name="peppol_state" />
+            <field name="peppol_state_time" />
+            <field name="peppol_error" />
+
+        </field>
+        
     </field>
 </record>
 
