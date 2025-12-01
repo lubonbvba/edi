@@ -11,7 +11,7 @@ class ScradaBase(http.Controller):
     def update(self, **kwargs):
 
         # _logger.info("SCRADA METHOD: %s", request.httprequest.method)
-        # _logger.info("SCRADA HEADERS: %s", dict(request.httprequest.headers))
+        _logger.info("SCRADA HEADERS: %s", dict(request.httprequest.headers))
         # _logger.info("SCRADA QUERY PARAMS: %s", request.httprequest.args.to_dict())
 
         message = request.jsonrequest
@@ -29,7 +29,7 @@ class ScradaBase(http.Controller):
                 invoice.sudo().peppol_error = message["errorMessage"]
 
             else:
-                _logger.error ("Invoice found")
+                _logger.error ("Invoice not found")
 
 
         # Return OK zodat Scrada niet opnieuw probeert

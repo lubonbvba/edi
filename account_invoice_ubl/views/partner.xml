@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  © 2016 Akretion (Alexis de Lattre <alexis.delattre@akretion.com>)
+  License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+-->
+
+<openerp>
+<data>
+
+
+<record id="partner_peppol_form" model="ir.ui.view">
+    <field name="name">account_invoice_ubl.partner.peppol.form</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base_vat.view_partner_form"/>
+    <field name="arch" type="xml">
+        <div name="vat_info" position="after">
+                            <label for="peppol_registered"/>
+
+                    <div name="vat_info">
+                        <field name="peppol_registered"  class="oe_inline" attrs="{'readonly': True}"/>
+                        <button colspan="2" name="check_peppol" string="Check peppol" type="object" icon="gtk-execute" class="oe_inline"/>
+                    </div>
+        </div>
+        
+    </field>
+</record>
+</data>
+</openerp>

@@ -12,12 +12,15 @@
     'website': 'http://www.akretion.com',
     'depends': [
         'account',
+        'base_vat',
         'account_payment_partner',
         'base_ubl_payment',
         ],
     'data': [
         'views/company.xml',
+        'views/partner.xml',
         'views/account_invoice.xml',
+
         ],
     'installable': True,
 }

@@ -15,11 +15,11 @@ class BaseUbl(models.AbstractModel):
 
     @api.model
     def _ubl_add_payment_means(
-            self, partner_bank, payment_mode, date_due, parent_node, ns,
+            self, partner_bank, payment_mode, date_due,payment_ref, parent_node, ns,
             version='2.1'):
         pay_means = etree.SubElement(parent_node, ns['cac'] + 'PaymentMeans')
         pay_means_code = etree.SubElement(
-            pay_means, ns['cbc'] + 'PaymentMeansCode', listID="UN/ECE 4461")
+            pay_means, ns['cbc'] + 'PaymentMeansCode')
         # Why not schemeAgencyID='6' + schemeID
         if payment_mode:  # type is a required field on payment_mode
             if not payment_mode.type.unece_id:
@@ -34,10 +34,13 @@ class BaseUbl(models.AbstractModel):
                 'Missing payment mode on invoice ID %d. '
                 'Using 31 (wire transfer) as UNECE code as fallback '
                 'for payment mean', self.id)
-        if date_due:
-            pay_due_date = etree.SubElement(
-                pay_means, ns['cbc'] + 'PaymentDueDate')
-            pay_due_date.text = date_due
+        if payment_ref:
+            pay_means_id = etree.SubElement(pay_means, ns['cbc'] + 'PaymentID')
+            pay_means_id.text = payment_ref
+        # if date_due:
+        #     pay_due_date = etree.SubElement(
+        #         pay_means, ns['cbc'] + 'PaymentDueDate')
+        #     pay_due_date.text = date_due
         if pay_means_code.text in ['31', '42']:
             if not partner_bank and payment_mode:
                 partner_bank = payment_mode.bank_id

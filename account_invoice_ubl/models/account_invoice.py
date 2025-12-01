@@ -15,9 +15,9 @@ import pdb
 class AccountInvoice(models.Model):
     _name = 'account.invoice'
     _inherit = ['account.invoice', 'base.ubl']
-    peppol_ref=odoofields.Char()
-    peppol_state=odoofields.Char()
-    peppolC3MessageID=odoofields.Char()
+    peppol_ref=odoofields.Char(track_visibility='onchange')
+    peppol_state=odoofields.Char(track_visibility='onchange')
+    peppolC3MessageID=odoofields.Char(track_visibility='onchange')
     peppol_error=odoofields.Text()
     peppol_state_time =odoofields.Datetime()
 
@@ -258,9 +258,9 @@ class AccountInvoice(models.Model):
         # delivery_partner = self.get_delivery_partner()
         # self._ubl_add_delivery(delivery_partner, xml_root, ns)
         # Put paymentmeans block even when invoice is paid ?
-        # self._ubl_add_payment_means(
-        #     self.partner_bank_id, self.payment_mode_id, self.date_due,
-        #     xml_root, ns, version=version)
+        self._ubl_add_payment_means(
+             self.partner_bank_id, self.payment_mode_id, self.date_due,self.reference or self.number,
+             xml_root, ns, version=version)
         if self.payment_term:
             self._ubl_add_payment_terms(
                 self.payment_term, xml_root, ns, version=version)
@@ -359,31 +359,36 @@ class AccountInvoice(models.Model):
 
     @api.multi
     def send_ubl_xml_file_button(self):
-        self.ensure_one()
-        version = self.get_ubl_version()
-        xml_string = self.generate_ubl_xml_string(version=version)
-        if isinstance(xml_string, str):        # bytes → decode naar unicode
-            xml_string = xml_string.decode("utf-8")
+        if not(self.partner_id.peppol_registered):
+            self.partner_id.check_peppol()
+        if self.partner_id.peppol_registered:
+            self.ensure_one()
+            version = self.get_ubl_version()
+            xml_string = self.generate_ubl_xml_string(version=version)
+            if isinstance(xml_string, str):        # bytes → decode naar unicode
+                xml_string = xml_string.decode("utf-8")
 
-        body = xml_string.encode("utf-8")         
-        headers={}
-        headers["X-API-KEY"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-API-KEY'))
-        headers["X-PASSWORD"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-PASSWORD'))
-        headers["Content-Type"] = "application/xml"
-        headers["x-scrada-peppol-sender-scheme"] = "iso6523-actorid-upis"
-        headers["x-scrada-peppol-sender-id"] = "0208:" + self._ubl_get_company_id(self.company_id.partner_id.country_id.code,(self.company_id.partner_id.sanitized_vat))
-        headers["x-scrada-peppol-receiver-Scheme"] = "iso6523-actorid-upis"
-        headers["x-scrada-peppol-receiver-id"] = (self.env['ir.config_parameter'].get_param('peppol_overwrite_recipient')) or "0208:" +  self._ubl_get_company_id(self.partner_id.country_id.code,(self.partner_id.sanitized_vat))
-        headers["x-scrada-peppol-c1-country-code"] = self.company_id.partner_id.country_id.code
-        headers["x-scrada-peppol-document-type-scheme"] = "busdox-docid-qns"
-        headers["x-scrada-peppol-document-type-value"] = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1"
-        headers["x-scrada-peppol-process-scheme"] = "cenbii-procid-ubl"
-        headers["x-scrada-peppol-process-value"] = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
-        headers["x-scrada-external-reference"] = self.number
+            body = xml_string.encode("utf-8")         
+            headers={}
+            headers["X-API-KEY"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-API-KEY'))
+            headers["X-PASSWORD"] = (self.env['ir.config_parameter'].get_param('peppol_scrada_X-PASSWORD'))
+            headers["Content-Type"] = "application/xml"
+            headers["x-scrada-peppol-sender-scheme"] = "iso6523-actorid-upis"
+            headers["x-scrada-peppol-sender-id"] = "0208:" + self._ubl_get_company_id(self.company_id.partner_id.country_id.code,(self.company_id.partner_id.sanitized_vat))
+            headers["x-scrada-peppol-receiver-Scheme"] = "iso6523-actorid-upis"
+            headers["x-scrada-peppol-receiver-id"] = (self.env['ir.config_parameter'].get_param('peppol_overwrite_recipient')) or "0208:" +  self._ubl_get_company_id(self.partner_id.country_id.code,(self.partner_id.sanitized_vat))
+            headers["x-scrada-peppol-c1-country-code"] = self.company_id.partner_id.country_id.code
+            headers["x-scrada-peppol-document-type-scheme"] = "busdox-docid-qns"
+            headers["x-scrada-peppol-document-type-value"] = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1"
+            headers["x-scrada-peppol-process-scheme"] = "cenbii-procid-ubl"
+            headers["x-scrada-peppol-process-value"] = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
+            headers["x-scrada-external-reference"] = self.number
 
-        url= self.env['ir.config_parameter'].get_param('peppol_base_url') + "/v1/company/" + self.env['ir.config_parameter'].get_param('peppol_scrada_company_id') + "/peppol/outbound/document"
-        response = requests.post(url, headers=headers, data=body)
-        self.peppol_ref=response.text.strip().strip('"')
-        # Optional: log response
-#        logger.info("Scrada response status: %s", response.status_code)
-#        logger.info("Scrada response: %s", response.text)
+            url= self.env['ir.config_parameter'].get_param('peppol_base_url') + "/v1/company/" + self.env['ir.config_parameter'].get_param('peppol_scrada_company_id') + "/peppol/outbound/document"
+            response = requests.post(url, headers=headers, data=body)
+            self.peppol_ref=response.text.strip().strip('"')
+            # Optional: log response
+    #        logger.info("Scrada response status: %s", response.status_code)
+    #        logger.info("Scrada response: %s", response.text)
+        else:
+            raise UserError ("Not possible, no peppol registration")
