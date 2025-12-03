@@ -380,8 +380,8 @@ class AccountInvoice(models.Model):
 
     @api.multi
     def send_ubl_xml_file_button(self):
-#        if not(self.partner_id.peppol_registered):
-        self.partner_id.check_peppol()
+        if not(self.partner_id.peppol_registered):
+            self.partner_id.check_peppol()
         if self.env['ir.config_parameter'].get_param('peppol_no_registrationcheck') or self.partner_id.peppol_registered:
             self.ensure_one()
             version = self.get_ubl_version()
