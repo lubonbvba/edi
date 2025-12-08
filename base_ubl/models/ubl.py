@@ -132,8 +132,8 @@ class BaseUbl(models.AbstractModel):
     def _ubl_add_party_identification(
             self, commercial_partner, parent_node, ns, version='2.1'):
         endpointID = etree.SubElement(parent_node, ns['cbc'] + 'EndpointID',  schemeID='0208')
-        country="BE"
-        pattern=r"^({})(.*$)".format(re.escape(commercial_partner.country_id.code))
+        country=commercial_partner.country_id.code #"BE"
+        pattern=r"^({})(.+)$".format(re.escape(commercial_partner.country_id.code))
         # logger.info("ubl_add_party_identification: name: %s", commercial_partner.name)
         # logger.info("ubl_add_party_identification: country_code: %s", commercial_partner.country_id.code)
         # logger.info("ubl_add_party_identification: sanitized vat: %s", commercial_partner.sanitized_vat)

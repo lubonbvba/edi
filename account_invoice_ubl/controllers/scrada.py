@@ -27,7 +27,8 @@ class ScradaBase(http.Controller):
                 invoice.sudo().peppol_state_time  = fields.datetime.now()
 
                 invoice.sudo().peppol_error = message["errorMessage"]
-
+                if message["status"] == "Processed":
+                    invoice.sudo().invoice_sent=True
             else:
                 _logger.error ("Invoice not found")
 

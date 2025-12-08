@@ -12,7 +12,7 @@ class Report(models.Model):
     _inherit = 'report'
 
     @api.v7
-    def get_pdf(
+    def zget_pdf(
             self, cr, uid, ids, report_name, html=None, data=None,
             context=None):
         """We go through that method when the PDF is generated for the 1st

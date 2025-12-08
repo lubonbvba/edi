@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../../odoo-modules"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../odoo-server"
+		}
+	],
+	"settings": {}
+}

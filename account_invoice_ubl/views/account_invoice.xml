@@ -20,6 +20,7 @@
                 string="Send peppol" states="open,paid"/>
         </button>
         <field name="move_id" position="after">
+            <field name="invoice_sent" />
             <field name="peppol_ref" />
             <field name="peppol_state" />
             <field name="peppolC3MessageID" />

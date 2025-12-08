@@ -21,6 +21,7 @@ class AccountInvoice(models.Model):
     peppolC3MessageID=odoofields.Char(track_visibility='onchange')
     peppol_error=odoofields.Text()
     peppol_state_time =odoofields.Datetime()
+    invoice_sent = odoofields.Boolean(track_visibility='onchange')
 
     @api.multi
     def _ubl_add_header(self, parent_node, ns, version='2.1'):
@@ -415,4 +416,5 @@ class AccountInvoice(models.Model):
     #        logger.info("Scrada response status: %s", response.status_code)
     #        logger.info("Scrada response: %s", response.text)
         else:
-            raise UserError ("Not possible, no peppol registration")
+            logger.warning("Geen peppol, factuur via mail sturen")
+            return self.action_invoice_sent()
